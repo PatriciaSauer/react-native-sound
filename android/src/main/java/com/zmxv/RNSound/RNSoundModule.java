@@ -107,9 +107,15 @@ public class RNSoundModule extends ReactContextBaseJavaModule implements AudioMa
           category = AudioManager.STREAM_ALARM;
           break;
         case "Effects":
+          // USAGE_ASSISTANCE_SONIFICATION follows notification/accessibility-style volume on many
+          // devices (silent when "notification sound" is off). USAGE_GAME / USAGE_MEDIA + SONIFICATION
+          // keeps short SFX on the media volume path while we still skip audio focus above.
           if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            int usage = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P
+                ? AudioAttributes.USAGE_GAME
+                : AudioAttributes.USAGE_MEDIA;
             AudioAttributes attrs = new AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+                .setUsage(usage)
                 .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                 .build();
             player.setAudioAttributes(attrs);

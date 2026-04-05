@@ -212,7 +212,7 @@ The **same string** is passed to both platforms, but native code only handles th
 | **`Voice`** | `STREAM_VOICE_CALL`. | Not mapped (no-op). |
 | **`Ring`** | `STREAM_RING`. | Not mapped (no-op). |
 | **`Alarm`** | `STREAM_ALARM`. | Not mapped (no-op). |
-| **`Effects`** | API 21+: `AudioAttributes` with `USAGE_ASSISTANCE_SONIFICATION` and `CONTENT_TYPE_SONIFICATION`. Older API: `STREAM_MUSIC`. **Never** takes audio focus. | `Ambient` + `MixWithOthers` + `AllowBluetooth` (second argument ignored). |
+| **`Effects`** | API 21+: `CONTENT_TYPE_SONIFICATION` with `USAGE_GAME` (API 28+) or `USAGE_MEDIA` (API 21–27). Avoids `USAGE_ASSISTANCE_SONIFICATION`, which often follows notification/accessibility volume (silent when notification sounds are off). Older API: `STREAM_MUSIC`. **Never** takes audio focus. | `Ambient` + `MixWithOthers` + `AllowBluetooth` (second argument ignored). |
 
 For short UI or game **sound effects** while **music from another app** (or your own music player) should keep playing, use **`Effects`** (and on other categories use **`mixWithOthers: true`** if you want to avoid audio focus on Android).
 
