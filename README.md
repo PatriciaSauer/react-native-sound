@@ -172,10 +172,56 @@ whoosh.stop(() => {
 whoosh.release();
 ```
 
+## `Sound.setCategory(category, mixWithOthers?)`
+
+Configure how your app interacts with the system audio session **before** you create `Sound` instances. Category and routing are applied in native code when each sound is prepared (when the `Sound` constructor runs).
+
+```js
+Sound.setCategory('Playback', true);
+```
+
+- **Windows:** `setCategory` is a no-op (native module does not implement it).
+
+### Second argument: `mixWithOthers`
+
+This flag means “prefer to mix with other apps’ audio” versus “prefer to take focused control,” but the exact behavior is platform-specific (see below).
+
+**Default in JavaScript:** `Sound.setCategory` is implemented as `function (category, mixWithOthers = false)`. If you **omit** the second argument, it defaults to **`false`**.
+
+| Value | Android | iOS |
+| --- | --- | --- |
+| **`true`** | Does **not** call `requestAudioFocus` when `play()` runs, so other apps’ audio is less likely to be ducked or paused. | Sets the `AVAudioSession` category **with** `MixWithOthers` and `AllowBluetooth`. |
+| **`false`** | Calls `requestAudioFocus` on `play()` (unless category is **`Effects`**; see table below). | Sets the `AVAudioSession` category **without** those mixing options. |
+
+**Special case — `Effects`:** On Android, **`Effects` never requests audio focus**, regardless of `mixWithOthers`. On iOS, **`Effects` always** uses `Ambient` with `MixWithOthers` and `AllowBluetooth`; the second argument is **ignored**.
+
+### Category names: Android vs iOS
+
+The **same string** is passed to both platforms, but native code only handles the names each platform defines. If a name is not supported on a platform, Android logs an error and leaves the default stream routing for that player; iOS leaves the session category unchanged for unknown names.
+
+| Category | Android | iOS |
+| --- | --- | --- |
+| **`Playback`** | `MediaPlayer` audio stream: `STREAM_MUSIC`. | `AVAudioSessionCategoryPlayback`. |
+| **`Ambient`** | `STREAM_NOTIFICATION`. | `AVAudioSessionCategoryAmbient`. |
+| **`SoloAmbient`** | Not mapped (error log). | `AVAudioSessionCategorySoloAmbient`. |
+| **`Record`** | Not mapped (error log). | `AVAudioSessionCategoryRecord`. |
+| **`PlayAndRecord`** | Not mapped (error log). | `AVAudioSessionCategoryPlayAndRecord`. |
+| **`AudioProcessing`** | Not mapped (error log). | `AVAudioSessionCategoryAudioProcessing` (iOS only). |
+| **`MultiRoute`** | Not mapped (error log). | `AVAudioSessionCategoryMultiRoute`. |
+| **`System`** | `STREAM_SYSTEM`. | Not mapped (no-op). |
+| **`Voice`** | `STREAM_VOICE_CALL`. | Not mapped (no-op). |
+| **`Ring`** | `STREAM_RING`. | Not mapped (no-op). |
+| **`Alarm`** | `STREAM_ALARM`. | Not mapped (no-op). |
+| **`Effects`** | API 21+: `AudioAttributes` with `USAGE_ASSISTANCE_SONIFICATION` and `CONTENT_TYPE_SONIFICATION`. Older API: `STREAM_MUSIC`. **Never** takes audio focus. | `Ambient` + `MixWithOthers` + `AllowBluetooth` (second argument ignored). |
+
+For short UI or game **sound effects** while **music from another app** (or your own music player) should keep playing, use **`Effects`** (and on other categories use **`mixWithOthers: true`** if you want to avoid audio focus on Android).
+
 ## Notes
 
 - To minimize playback delay, you may want to preload a sound file without calling `play()` (e.g. `var s = new Sound(...);`) during app initialization. This also helps avoid a race condition where `play()` may be called before loading of the sound is complete, which results in no sound but no error because loading is still being processed.
-- You can play multiple sound files at the same time. Under the hood, this module uses `AVAudioSessionCategoryAmbient` to mix sounds on iOS.
+- You can play multiple sound files at the same time (several `Sound` instances).
+  - **iOS — other apps’ audio:** `Sound.setCategory('Ambient')` or `Sound.setCategory('Effects')` alone is enough for typical mixing: `Ambient` uses `AVAudioSessionCategoryAmbient` (mix-friendly even with the default second argument), and `Effects` always applies `MixWithOthers` (the boolean is ignored). **`Playback`** is stricter: `Sound.setCategory('Playback')` sets Playback **without** `MixWithOthers`, so other apps’ audio is more likely to duck or stop—use **`Sound.setCategory('Playback', true)`** when you want to mix with them. Other categories follow the same pattern as Playback: pass **`true`** only when you need those mixing options.
+  - **Android:** `Ambient` / `Playback` / most categories still use the second argument for audio focus (default **`false`** requests focus on `play()`). Use **`true`** to avoid that, or use **`Effects`**, which never requests focus regardless of the boolean.
 - You may reuse a `Sound` instance for multiple playbacks.
 - On iOS, the module wraps `AVAudioPlayer` that supports aac, aiff, mp3, wav etc. The full list of supported formats can be found at https://developer.apple.com/library/content/documentation/MusicAudio/Conceptual/CoreAudioOverview/SupportedAudioFormatsMacOSX/SupportedAudioFormatsMacOSX.html
 - On Android, the module wraps `android.media.MediaPlayer`. The full list of supported formats can be found at https://developer.android.com/guide/topics/media/media-formats.html

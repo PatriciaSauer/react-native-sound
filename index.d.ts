@@ -3,7 +3,7 @@
 // Definitions by: Kyle Roach <https://github.com/iRoachie>
 // TypeScript Version: 2.3.2
 
-type AVAudioSessionCategory = 'Ambient' | 'SoloAmbient' | 'Playback' | 'Record' | 'PlayAndRecord' | 'AudioProcessing' | 'MultiRoute' | 'Alarm'
+type AVAudioSessionCategory = 'Ambient' | 'SoloAmbient' | 'Playback' | 'Record' | 'PlayAndRecord' | 'AudioProcessing' | 'MultiRoute' | 'Alarm' | 'Effects'
 
 type AVAudioSessionMode = 'Default' | 'VoiceChat' | 'VideoChat' | 'GameChat' | 'VideoRecording' | 'Measurement' | 'MoviePlayback' | 'SpokenAudio'
 
@@ -32,12 +32,13 @@ declare class Sound {
   static setActive(active: boolean): void
 
   /**
-   * Sets AVAudioSession category, which allows playing sound in background,
-   * stop sound playback when phone is locked, etc.
-   * Parameter options: "Ambient", "SoloAmbient", "Playback", "Record", "PlayAndRecord", "AudioProcessing", "MultiRoute".
+   * Configures the audio session / stream routing. Call before creating `Sound` instances.
+   * Category strings are not all supported on every platform; see README for the full matrix.
    *
-   * @param category AVAudioSession category
-   * @param mixWithOthers Can be set to true to force mixing with other audio sessions.
+   * @param category e.g. Playback, Ambient, Effects, Alarm (Android-only), etc.
+   * @param mixWithOthers When `true`, Android does not request audio focus on play; iOS sets the category with MixWithOthers.
+   *   When `false`, Android requests audio focus on play (except for category `Effects`, which never takes focus).
+   *   **JS default is `false`** if omitted (`Sound.setCategory('Playback')` requests focus on Android).
    */
   static setCategory(category: AVAudioSessionCategory, mixWithOthers?: boolean): void
 
@@ -46,7 +47,6 @@ declare class Sound {
    * Parameter options: "Default", "VoiceChat", "VideoChat", "GameChat", "VideoRecording", "Measurement", "MoviePlayback", "SpokenAudio".
    *
    * @param mode AVAudioSession mode
-   * @param mixWithOthers Can be set to true to force mixing with other audio sessions.
    */
   static setMode(mode: AVAudioSessionMode): void
 

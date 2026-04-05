@@ -172,6 +172,15 @@ RCT_EXPORT_METHOD(setCategory
         category = AVAudioSessionCategoryMultiRoute;
     }
 
+    // Short UI / game SFX: mix with other apps (e.g. background music). Mirrors Android Effects + no audio focus.
+    if ([categoryName isEqual:@"Effects"]) {
+        [session setCategory:AVAudioSessionCategoryAmbient
+                 withOptions:AVAudioSessionCategoryOptionMixWithOthers |
+                             AVAudioSessionCategoryOptionAllowBluetooth
+                       error:nil];
+        return;
+    }
+
     if (category) {
         if (mixWithOthers) {
             [session setCategory:category

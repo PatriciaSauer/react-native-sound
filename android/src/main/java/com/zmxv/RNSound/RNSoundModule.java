@@ -6,6 +6,7 @@ import android.media.MediaPlayer;
 import android.media.MediaPlayer.OnCompletionListener;
 import android.media.MediaPlayer.OnErrorListener;
 import android.net.Uri;
+import android.media.AudioAttributes;
 import android.media.AudioManager;
 
 import com.facebook.react.bridge.Arguments;
@@ -56,6 +57,17 @@ public class RNSoundModule extends ReactContextBaseJavaModule implements AudioMa
     return "RNSound";
   }
 
+  /**
+   * Android audio focus is requested only when mixWithOthers is false (see setCategory).
+   * The Effects category never takes audio focus so background music keeps playing.
+   */
+  private boolean shouldRequestAudioFocus() {
+    if ("Effects".equals(this.category)) {
+      return false;
+    }
+    return Boolean.FALSE.equals(this.mixWithOthers);
+  }
+
   @ReactMethod
   public void prepare(final String fileName, final Double key, final ReadableMap options, final Callback callback) {
     MediaPlayer player = createMediaPlayer(fileName);
@@ -93,6 +105,17 @@ public class RNSoundModule extends ReactContextBaseJavaModule implements AudioMa
           break;
         case "Alarm":
           category = AudioManager.STREAM_ALARM;
+          break;
+        case "Effects":
+          if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            AudioAttributes attrs = new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build();
+            player.setAudioAttributes(attrs);
+          } else {
+            player.setAudioStreamType(AudioManager.STREAM_MUSIC);
+          }
           break;
         default:
           Log.e("RNSoundModule", String.format("Unrecognised category %s", module.category));
@@ -235,8 +258,8 @@ public class RNSoundModule extends ReactContextBaseJavaModule implements AudioMa
       return;
     }
 
-    // Request audio focus in Android system
-    if (!this.mixWithOthers) {
+    // Request audio focus in Android system (skipped when mixing or when using Effects category)
+    if (shouldRequestAudioFocus()) {
       AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
 
       audioManager.requestAudioFocus(this, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
@@ -302,7 +325,7 @@ public class RNSoundModule extends ReactContextBaseJavaModule implements AudioMa
     }
 
     // Release audio focus in Android system
-    if (!this.mixWithOthers && key == this.focusedPlayerKey) {
+    if (shouldRequestAudioFocus() && key == this.focusedPlayerKey) {
       AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
       audioManager.abandonAudioFocus(this);
     }
@@ -327,7 +350,7 @@ public class RNSoundModule extends ReactContextBaseJavaModule implements AudioMa
       this.playerPool.remove(key);
 
       // Release audio focus in Android system
-      if (!this.mixWithOthers && key == this.focusedPlayerKey) {
+      if (shouldRequestAudioFocus() && key == this.focusedPlayerKey) {
         AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
         audioManager.abandonAudioFocus(this);
       }
@@ -453,7 +476,7 @@ public class RNSoundModule extends ReactContextBaseJavaModule implements AudioMa
 
   @Override
   public void onAudioFocusChange(int focusChange) {
-    if (!this.mixWithOthers) {
+    if (shouldRequestAudioFocus()) {
       MediaPlayer player = this.playerPool.get(this.focusedPlayerKey);
 
       if (player != null) {
